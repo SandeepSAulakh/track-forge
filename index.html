@@ -52,7 +52,7 @@
   .step-sub { color: #555; font-size: 12px; margin-top: 2px; }
 
   /* Content */
-  .content { max-width: 640px; margin: 0 auto; padding: 20px 24px 120px; }
+  .content { max-width: 640px; margin: 0 auto; padding: 20px 24px 10px; }
   .step-panel { display: none; }
   .step-panel.active { display: block; }
 
@@ -207,11 +207,10 @@
 
   /* Nav */
   .nav-bar {
-    position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 24px;
-    background: linear-gradient(180deg, transparent, #0b0b0f 30%);
+    max-width: 640px; margin: 20px auto 40px; padding: 0 24px;
     display: flex; justify-content: center; gap: 12px;
   }
-  .nav-inner { max-width: 640px; width: 100%; display: flex; gap: 12px; }
+  .nav-inner { width: 100%; display: flex; gap: 12px; }
   .btn-back {
     flex: 1; padding: 14px; border-radius: 10px; border: 2px solid #1a1a1f;
     background: transparent; color: #666; font-size: 14px; font-weight: 500;
@@ -315,7 +314,10 @@
       <pre class="output-text" id="outputText"></pre>
     </div>
     <button class="btn-primary" id="copyBtn" onclick="copyPrompt()">📋 Copy Prompt</button>
-    <button class="btn-secondary" onclick="startOver()">↻ Start Over</button>
+    <div style="display:flex;gap:12px;margin-top:12px">
+      <button class="btn-back" onclick="state.step=3;render();window.scrollTo(0,0)">← Back</button>
+      <button class="btn-secondary" style="flex:2;margin-top:0" onclick="startOver()">↻ Start Over</button>
+    </div>
   </div>
 </div>
 
