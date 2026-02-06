@@ -2,9 +2,6 @@
 
 A simple prompt builder for AI music generators like Suno, Udio, etc.
 
-## What is this?
-
-A simple prompt builder for AI music generators like Suno, Udio, etc.
 
 ## How it works
 
