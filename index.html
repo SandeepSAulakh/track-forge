@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrackForge — Prompt Composer for AI Music</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    background: #0b0b0f;
+    color: #e0e0e0;
+    font-family: 'Outfit', sans-serif;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* Header */
+  .header {
+    padding: 36px 24px 20px;
+    border-bottom: 1px solid #1a1a1f;
+    background: linear-gradient(180deg, rgba(232,72,85,0.06) 0%, transparent 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .header-glow {
+    position: absolute; top: -40px; right: -20px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(232,72,85,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-inner { max-width: 640px; margin: 0 auto; position: relative; display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, #e84855, #c72c3e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; box-shadow: 0 2px 12px rgba(232,72,85,0.3);
+  }
+  .logo-text { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #f0f0f0; }
+  .logo-text span { color: #e84855; }
+  .logo-sub { color: #4a4a55; font-size: 11px; letter-spacing: 0.5px; }
+
+  /* Progress */
+  .progress-wrap { max-width: 640px; margin: 0 auto; padding: 16px 24px 0; }
+  .progress-bar { display: flex; gap: 4px; margin-bottom: 6px; }
+  .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: #1a1a1f; transition: background 0.3s; }
+  .progress-seg.active { background: #e84855; }
+  .progress-seg.clickable { cursor: pointer; }
+  .progress-meta { display: flex; justify-content: space-between; align-items: baseline; }
+  .step-label { color: #e84855; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .step-count { color: #333; font-size: 11px; }
+  .step-sub { color: #555; font-size: 12px; margin-top: 2px; }
+
+  /* Content */
+  .content { max-width: 640px; margin: 0 auto; padding: 20px 24px 120px; }
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* Section labels */
+  .section-label {
+    color: #666; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1.5px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Chips */
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  .chip-grid.tight { gap: 6px; margin-bottom: 0; }
+  .chip {
+    padding: 6px 14px; border-radius: 20px;
+    border: 2px solid #2a2a2a; background: rgba(255,255,255,0.03);
+    color: #999; cursor: pointer; font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    transition: all 0.2s ease; letter-spacing: 0.3px;
+  }
+  .chip.small { padding: 4px 10px; font-size: 12px; }
+  .chip.selected { border-color: #e84855; background: rgba(232,72,85,0.15); color: #e84855; }
+
+  /* Auto badge */
+  .auto-badge {
+    font-size: 9px; background: rgba(78,205,196,0.15); color: #4ecdc4;
+    padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
+    letter-spacing: 1px; margin-left: 6px;
+  }
+
+  /* Energy cards */
+  .energy-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+  .energy-card {
+    padding: 14px 16px; border-radius: 10px;
+    border: 2px solid #1a1a1f; background: rgba(255,255,255,0.02);
+    cursor: pointer; text-align: left; display: flex; align-items: center; gap: 12px;
+  }
+  .energy-card.selected { border-color: #e84855; background: rgba(232,72,85,0.08); }
+  .energy-card.suggested { border-color: #e84855; background: rgba(78,205,196,0.04); }
+  .energy-emoji { font-size: 22px; }
+  .energy-name { font-size: 14px; font-weight: 500; color: #ccc; display: flex; align-items: center; gap: 6px; }
+  .energy-card.selected .energy-name,
+  .energy-card.suggested .energy-name { color: #e84855; }
+  .energy-desc { color: #555; font-size: 12px; }
+  .suggested-tag { font-size: 9px; color: #4ecdc4; }
+
+  /* Inputs */
+  .input-row { display: flex; gap: 16px; }
+  .input-row > div { flex: 1; }
+  .text-input {
+    width: 100%; padding: 10px 14px; border-radius: 8px;
+    border: 2px solid #1a1a1f; background: rgba(255,255,255,0.02);
+    color: #e0e0e0; font-size: 14px; font-family: 'IBM Plex Mono', monospace;
+    outline: none;
+  }
+  .text-input::placeholder { color: #444; }
+  .textarea-input {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid #222;
+    border-radius: 8px; color: #ccc; padding: 12px 14px; font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace; resize: vertical; min-height: 60px; outline: none;
+    line-height: 1.5;
+  }
+  .textarea-input.large { min-height: 80px; border: 2px solid #1a1a1f; border-radius: 10px; }
+
+  /* Section rows (structure step) */
+  .section-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid #1a1a1f; margin-bottom: 4px;
+  }
+  .section-num { color: #e84855; font-size: 11px; min-width: 24px; }
+  .section-name-input {
+    flex: 1; background: transparent; border: none; color: #e0e0e0;
+    font-size: 14px; font-family: 'Outfit', sans-serif; outline: none;
+  }
+  .section-remove { background: none; border: none; color: #333; cursor: pointer; font-size: 16px; padding: 0 4px; }
+  .add-section-btn {
+    padding: 8px 16px; border-radius: 8px; border: 2px dashed #1a1a1f;
+    background: transparent; color: #444; cursor: pointer; font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace; width: 100%; margin-top: 8px;
+  }
+
+  /* Arrange section rows */
+  .arrange-row {
+    background: rgba(255,255,255,0.02); border-radius: 10px;
+    border: 1px solid #1a1a1a; overflow: hidden; margin-bottom: 6px;
+  }
+  .arrange-row.peak { background: rgba(232,72,85,0.04); border-color: rgba(232,72,85,0.3); }
+  .arrange-header {
+    padding: 12px 16px; display: flex; align-items: center;
+    justify-content: space-between; cursor: pointer; user-select: none;
+  }
+  .arrange-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .arrange-arrow { color: #555; transition: transform 0.2s; }
+  .arrange-arrow.open { transform: rotate(90deg); }
+  .arrange-body { padding: 0 16px 14px; border-top: 1px solid #1a1a1a; display: none; }
+  .arrange-body.open { display: block; }
+  .peak-btn {
+    padding: 4px 10px; border-radius: 6px; border: 1px solid #333;
+    background: transparent; color: #666; font-size: 11px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; margin: 10px 0;
+  }
+  .peak-btn.active { border-color: #e84855; background: rgba(232,72,85,0.15); color: #e84855; }
+
+  /* Info box */
+  .info-box {
+    background: rgba(78,205,196,0.06); border: 1px solid rgba(78,205,196,0.15);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .info-box p { color: #8a8a95; font-size: 12px; line-height: 1.5; }
+
+  /* Creative input area */
+  .creative-box {
+    background: rgba(78,205,196,0.04); border: 1px solid rgba(78,205,196,0.15);
+    border-radius: 12px; padding: 16px; margin-bottom: 16px;
+  }
+  .creative-box h3 { color: #ccc; font-size: 14px; font-weight: 600; margin: 0; }
+  .creative-box p { color: #666; font-size: 11px; line-height: 1.5; margin: 6px 0 10px; }
+
+  /* Output */
+  .output-box {
+    background: rgba(0,0,0,0.4); border: 1px solid #1a1a1f;
+    border-radius: 12px; padding: 20px; margin-bottom: 16px; position: relative;
+  }
+  .word-counter {
+    position: absolute; top: 12px; right: 14px; font-size: 11px;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .word-counter.ok { color: #4ecdc4; background: rgba(78,205,196,0.1); }
+  .word-counter.warn { color: #f0a030; background: rgba(240,160,48,0.1); }
+  .word-counter.over { color: #e84855; background: rgba(232,72,85,0.12); }
+  .output-text {
+    color: #bbb; font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+    white-space: pre-wrap; word-break: break-word; margin: 0; line-height: 1.6;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%; padding: 14px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #e84855, #c72c3e); color: #fff;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Outfit', sans-serif; letter-spacing: 0.5px;
+    transition: all 0.3s; box-shadow: 0 4px 16px rgba(232,72,85,0.3);
+  }
+  .btn-primary.copied { background: #2d5a27; box-shadow: none; }
+  .btn-primary:disabled { background: #1a1a1f; color: #333; cursor: not-allowed; box-shadow: none; }
+  .btn-secondary {
+    width: 100%; padding: 12px; border-radius: 10px;
+    border: 2px solid #1a1a1f; background: transparent; color: #666;
+    font-size: 13px; cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+    margin-top: 10px;
+  }
+
+  /* Nav */
+  .nav-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 24px;
+    background: linear-gradient(180deg, transparent, #0b0b0f 30%);
+    display: flex; justify-content: center; gap: 12px;
+  }
+  .nav-inner { max-width: 640px; width: 100%; display: flex; gap: 12px; }
+  .btn-back {
+    flex: 1; padding: 14px; border-radius: 10px; border: 2px solid #1a1a1f;
+    background: transparent; color: #666; font-size: 14px; font-weight: 500;
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+  }
+  .btn-next {
+    flex: 2; padding: 14px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #e84855, #c72c3e); color: #fff;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Outfit', sans-serif; letter-spacing: 0.5px;
+    box-shadow: 0 4px 16px rgba(232,72,85,0.25);
+  }
+  .btn-next:disabled { background: #1a1a1f; color: #333; cursor: not-allowed; box-shadow: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-glow"></div>
+  <div class="header-inner">
+    <div class="logo-icon">🎹</div>
+    <div>
+      <div class="logo-text">Track<span>Forge</span></div>
+      <div class="logo-sub mono">prompt composer for AI music generators</div>
+    </div>
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="progress-wrap">
+  <div class="progress-bar" id="progressBar"></div>
+  <div class="progress-meta">
+    <span class="step-label mono" id="stepLabel"></span>
+    <span class="step-count mono" id="stepCount"></span>
+  </div>
+  <p class="step-sub mono" id="stepSub"></p>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Step 0: Genre & Mood -->
+  <div class="step-panel" id="step0">
+    <p class="section-label mono">Genre <span id="genreCount"></span></p>
+    <div class="chip-grid" id="genreGrid"></div>
+    <p class="section-label mono">Mood <span id="moodCount"></span></p>
+    <div class="chip-grid" id="moodGrid"></div>
+  </div>
+
+  <!-- Step 1: Energy & Tempo -->
+  <div class="step-panel" id="step1">
+    <div class="section-label mono">Energy Curve <span id="energyAuto"></span></div>
+    <div class="energy-list" id="energyList"></div>
+    <div class="input-row">
+      <div>
+        <div class="section-label mono" style="margin-bottom:8px">BPM <span id="bpmAuto"></span></div>
+        <input class="text-input" type="text" id="bpmInput" placeholder="">
+      </div>
+      <div>
+        <div class="section-label mono" style="margin-bottom:8px">Duration</div>
+        <input class="text-input" type="text" id="durationInput" value="3:00-4:00">
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Structure -->
+  <div class="step-panel" id="step2">
+    <div class="section-label mono">Song Structure <span id="structAuto"></span></div>
+    <div class="chip-grid" id="structGrid" style="margin-bottom:20px"></div>
+    <div id="sectionsEditor" style="display:none">
+      <p class="section-label mono">Sections — edit names or reorder</p>
+      <div id="sectionsList"></div>
+      <button class="add-section-btn" onclick="addSection()">+ Add Section</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Arrange -->
+  <div class="step-panel" id="step3">
+    <div class="info-box">
+      <span style="font-size:16px;margin-top:1px">✨</span>
+      <p class="mono">Everything is auto-filled based on your genre & mood. Expand any section to customize, or just hit Generate.</p>
+    </div>
+    <p class="section-label mono">Section Arrangement</p>
+    <div id="arrangeList"></div>
+    <p class="section-label mono" style="margin-top:20px">Extra Production Notes (optional)</p>
+    <textarea class="textarea-input large" id="customNotes" placeholder="Vocal style, references, specific production techniques..."></textarea>
+  </div>
+
+  <!-- Step 4: Output -->
+  <div class="step-panel" id="step4">
+    <div class="creative-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:16px">✍️</span>
+        <h3>Add Your Creative Vision</h3>
+      </div>
+      <p class="mono">This tool builds a structured framework — there's no AI generating your prompt in the backend. Add your own details below to make it truly yours: vocal style, lyrical themes, reference tracks, specific vibes, anything you want the AI music generator to know.</p>
+      <textarea class="textarea-input" id="creativeInput" style="min-height:80px" placeholder="e.g. Female vocals, breathy and intimate. Lyrics about driving at night alone. Similar vibe to The Weeknd's Blinding Lights but darker. Heavy reverb on the chorus vocals. Vinyl crackle texture in the intro."></textarea>
+    </div>
+    <div class="output-box">
+      <div class="word-counter mono" id="wordCounter"></div>
+      <pre class="output-text" id="outputText"></pre>
+    </div>
+    <button class="btn-primary" id="copyBtn" onclick="copyPrompt()">📋 Copy Prompt</button>
+    <button class="btn-secondary" onclick="startOver()">↻ Start Over</button>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-bar" id="navBar">
+  <div class="nav-inner">
+    <button class="btn-back" id="backBtn" onclick="goBack()" style="display:none">← Back</button>
+    <button class="btn-next" id="nextBtn" onclick="goNext()">Next →</button>
+  </div>
+</div>
+
+<script>
+// === STATE ===
+const state = {
+  step: 0,
+  selectedGenres: [],
+  selectedMoods: [],
+  energy: null,
+  bpm: '',
+  duration: '3:00-4:00',
+  structurePreset: null,
+  sections: [],
+  sectionInstruments: {},
+  sectionNotes: {},
+  userTouchedInstruments: {},
+  userTouchedNotes: {},
+  peakSection: null,
+  customNotes: '',
+  userCreativeInput: '',
+  expandedSections: {},
+};
+
+// === DATA ===
+const genreInstrumentMap = {
+  "Pop":["Piano","Synth Pads","Drums/Percussion","Bass Guitar","Synth Lead"],
+  "Rock":["Electric Guitar","Bass Guitar","Drums/Percussion","Piano","Organ"],
+  "Hip-Hop":["808 Bass","Hi-Hats (Trap)","Synth Lead","Synth Pads","Piano"],
+  "R&B":["Synth Pads","Piano","Bass Guitar","Drums/Percussion","Electric Guitar"],
+  "Electronic/EDM":["Synth Lead","Synth Pads","808 Bass","Hi-Hats (Trap)","Drums/Percussion"],
+  "Lo-Fi":["Piano","Drums/Percussion","Bass Guitar","Synth Pads","Acoustic Guitar"],
+  "Jazz":["Piano","Saxophone","Bass Guitar","Drums/Percussion","Trumpet"],
+  "Classical":["Strings (Orchestral)","Piano","Cello","Violin Solo","Flute"],
+  "Country":["Acoustic Guitar","Violin Solo","Piano","Bass Guitar","Drums/Percussion"],
+  "Indie":["Acoustic Guitar","Electric Guitar","Drums/Percussion","Bass Guitar","Synth Pads"],
+  "Metal":["Electric Guitar","Bass Guitar","Drums/Percussion","Synth Lead","Organ"],
+  "Funk/Soul":["Bass Guitar","Electric Guitar","Drums/Percussion","Organ","Brass Section"],
+  "Ambient":["Synth Pads","Strings (Orchestral)","Piano","Flute","Cello"],
+  "Cinematic/Orchestral":["Strings (Orchestral)","Brass Section","Choir/Vocals","Piano","Cello"],
+  "Reggae":["Bass Guitar","Electric Guitar","Drums/Percussion","Organ","Brass Section"],
+  "Latin":["Drums/Percussion","Acoustic Guitar","Bass Guitar","Piano","Brass Section"],
+  "Afrobeat":["Drums/Percussion","Bass Guitar","Brass Section","Electric Guitar","Organ"],
+  "Punk":["Electric Guitar","Bass Guitar","Drums/Percussion","Synth Lead"],
+  "Blues":["Electric Guitar","Piano","Bass Guitar","Drums/Percussion","Organ"],
+};
+const moodEnergyMap={"Euphoric":"Slow Build","Melancholic":"Rise & Fall","Aggressive":"Explosive Start","Dreamy":"Steady Burn","Dark & Brooding":"Tension Release","Uplifting":"Slow Build","Nostalgic":"Rise & Fall","Mysterious":"Tension Release","Playful":"Roller Coaster","Epic & Cinematic":"Slow Build","Chill & Relaxed":"Steady Burn","Romantic":"Rise & Fall","Anxious/Tense":"Tension Release","Triumphant":"Slow Build","Ethereal":"Steady Burn"};
+const genreStructureMap={"Pop":"Classic Pop","Rock":"Classic Pop","Hip-Hop":"Hip-Hop","R&B":"Ballad","Electronic/EDM":"EDM Drop","Lo-Fi":"Ballad","Jazz":"Ballad","Classical":"Cinematic","Country":"Classic Pop","Indie":"Classic Pop","Metal":"Classic Pop","Funk/Soul":"Classic Pop","Ambient":"Cinematic","Cinematic/Orchestral":"Cinematic","Reggae":"Classic Pop","Latin":"Classic Pop","Afrobeat":"Classic Pop","Punk":"Hip-Hop","Blues":"Ballad"};
+const moodBpmMap={"Euphoric":"128","Melancholic":"72","Aggressive":"140","Dreamy":"85","Dark & Brooding":"90","Uplifting":"120","Nostalgic":"95","Mysterious":"100","Playful":"115","Epic & Cinematic":"80","Chill & Relaxed":"75","Romantic":"82","Anxious/Tense":"130","Triumphant":"110","Ethereal":"70"};
+
+const genres=["Pop","Rock","Hip-Hop","R&B","Electronic/EDM","Lo-Fi","Jazz","Classical","Country","Indie","Metal","Funk/Soul","Ambient","Cinematic/Orchestral","Reggae","Latin","Afrobeat","Punk","Blues"];
+const moods=["Euphoric","Melancholic","Aggressive","Dreamy","Dark & Brooding","Uplifting","Nostalgic","Mysterious","Playful","Epic & Cinematic","Chill & Relaxed","Romantic","Anxious/Tense","Triumphant","Ethereal"];
+const allInstruments=["Piano","Acoustic Guitar","Electric Guitar","Bass Guitar","Drums/Percussion","Synth Pads","Synth Lead","Strings (Orchestral)","Brass Section","Choir/Vocals","808 Bass","Hi-Hats (Trap)","Organ","Flute","Saxophone","Violin Solo","Cello","Horns","Marimba","Steel Drums","Sitar","Tabla","Trumpet"];
+const energyCurves=[
+  {name:"Slow Build",emoji:"📈",desc:"Starts quiet, builds to a massive peak at the end"},
+  {name:"Explosive Start",emoji:"💥",desc:"Opens huge, drops down, builds back up"},
+  {name:"Roller Coaster",emoji:"🎢",desc:"Multiple peaks and valleys throughout"},
+  {name:"Steady Burn",emoji:"🔥",desc:"Consistent energy with subtle variations"},
+  {name:"Rise & Fall",emoji:"🌊",desc:"Builds to a peak in the middle, then winds down"},
+  {name:"Tension Release",emoji:"🎭",desc:"Long tension build → one massive release"},
+];
+const structurePresets=[
+  {name:"Classic Pop",sections:["Intro","Verse 1","Chorus","Verse 2","Chorus","Bridge","Final Chorus","Outro"]},
+  {name:"Hip-Hop",sections:["Intro","Verse 1","Hook","Verse 2","Hook","Verse 3","Hook","Outro"]},
+  {name:"EDM Drop",sections:["Intro/Build","Drop 1","Breakdown","Build 2","Drop 2","Outro"]},
+  {name:"Cinematic",sections:["Opening Theme","Rising Action","Climax","Resolution","Coda"]},
+  {name:"Ballad",sections:["Intro","Verse 1","Verse 2","Chorus","Verse 3","Final Chorus","Outro"]},
+  {name:"Custom",sections:[]},
+];
+const stepsMeta=[
+  {title:"Genre & Mood",sub:"Pick up to 3 of each"},
+  {title:"Energy & Tempo",sub:"How the song flows — or let us pick"},
+  {title:"Structure",sub:"Blueprint of your track — or auto-match"},
+  {title:"Arrange",sub:"Fine-tune or trust the auto-fill"},
+  {title:"Your Prompt",sub:"Copy & paste into Suno / Udio"},
+];
+
+// === AUTO-FILL ===
+function getAutoEnergy(){return state.selectedMoods.length?moodEnergyMap[state.selectedMoods[0]]||"Slow Build":"Slow Build";}
+function getAutoBpm(){return state.selectedMoods.length?moodBpmMap[state.selectedMoods[0]]||"120":"120";}
+function getAutoStructure(){return state.selectedGenres.length?genreStructureMap[state.selectedGenres[0]]||"Classic Pop":"Classic Pop";}
+function getAutoInstruments(idx,total){
+  const pool=new Set();
+  state.selectedGenres.forEach(g=>(genreInstrumentMap[g]||[]).forEach(i=>pool.add(i)));
+  const all=[...pool];
+  const progress=idx/Math.max(total-1,1);
+  const count=Math.max(2,Math.round(all.length*(0.3+progress*0.7)));
+  return all.slice(0,Math.min(count,all.length));
+}
+function getAutoNote(name,idx,total){
+  const progress=idx/Math.max(total-1,1);
+  const l=name.toLowerCase();
+  if(l.includes("intro")||l.includes("opening"))return"Set the mood — start sparse, establish the sonic palette";
+  if(l.includes("outro")||l.includes("coda")||l.includes("resolution"))return"Wind down gently, let the last elements fade";
+  if(l.includes("bridge")||l.includes("breakdown"))return"Strip it back, create contrast before the final push";
+  if(l.includes("drop"))return"Full energy — all elements hit at once, maximum impact";
+  if(l.includes("build"))return"Gradually layer elements, increase tension with risers and fills";
+  if(l.includes("hook"))return"Catchy and memorable — keep it tight and punchy";
+  if(l.includes("final chorus"))return"Biggest moment — add extra layers, harmonies, everything peaks here";
+  if(l.includes("chorus"))return"Open up — fuller arrangement, vocals front and center";
+  if(l.includes("verse"))return idx<=1?"Establish the groove — keep it minimal, leave room for vocals":"Add subtle new elements to maintain interest";
+  if(l.includes("climax"))return"Maximum intensity — all forces converge";
+  if(l.includes("rising"))return"Build momentum steadily, add layers one at a time";
+  if(progress<0.3)return"Keep it restrained — establish foundations";
+  if(progress>0.7)return"Full arrangement — bring the energy";
+  return"Develop the arrangement — add depth and movement";
+}
+function effectiveEnergy(){return state.energy||getAutoEnergy();}
+function effectiveBpm(){return state.bpm||getAutoBpm();}
+function effectivePeak(){return state.peakSection!==null?state.peakSection:Math.floor(state.sections.length*0.7);}
+function effectiveInstruments(idx){
+  if(state.userTouchedInstruments[idx]&&state.sectionInstruments[idx])return state.sectionInstruments[idx];
+  return state.sectionInstruments[idx]||getAutoInstruments(idx,state.sections.length);
+}
+function effectiveNote(idx){
+  if(state.userTouchedNotes[idx])return state.sectionNotes[idx]||"";
+  return state.sectionNotes[idx]||getAutoNote(state.sections[idx],idx,state.sections.length);
+}
+
+// === RENDER ===
+function render(){
+  // Progress
+  const pb=document.getElementById('progressBar');
+  pb.innerHTML='';
+  for(let i=0;i<5;i++){
+    const d=document.createElement('div');
+    d.className='progress-seg'+(i<=state.step?' active':'')+(i<state.step?' clickable':'');
+    if(i<state.step)d.onclick=()=>{state.step=i;render();};
+    pb.appendChild(d);
+  }
+  document.getElementById('stepLabel').textContent=stepsMeta[state.step].title;
+  document.getElementById('stepCount').textContent=`${state.step+1}/5`;
+  document.getElementById('stepSub').textContent=stepsMeta[state.step].sub;
+
+  // Show/hide panels
+  for(let i=0;i<5;i++){
+    document.getElementById('step'+i).className='step-panel'+(i===state.step?' active':'');
+  }
+
+  // Nav
+  const nav=document.getElementById('navBar');
+  nav.style.display=state.step<4?'flex':'none';
+  document.getElementById('backBtn').style.display=state.step>0?'block':'none';
+  const nb=document.getElementById('nextBtn');
+  nb.disabled=!canProceed();
+  nb.textContent=state.step===3?'🎵 Generate Prompt':state.step===0?'Next →':'Next → (or skip to auto-fill)';
+
+  // Step-specific renders
+  if(state.step===0)renderStep0();
+  if(state.step===1)renderStep1();
+  if(state.step===2)renderStep2();
+  if(state.step===3)renderStep3();
+  if(state.step===4)renderStep4();
+}
+
+function renderStep0(){
+  renderChips('genreGrid',genres,state.selectedGenres,g=>{
+    const i=state.selectedGenres.indexOf(g);
+    if(i>-1)state.selectedGenres.splice(i,1);
+    else if(state.selectedGenres.length<3)state.selectedGenres.push(g);
+    render();
+  });
+  document.getElementById('genreCount').textContent=state.selectedGenres.length?`(${state.selectedGenres.length}/3)`:'';
+  renderChips('moodGrid',moods,state.selectedMoods,m=>{
+    const i=state.selectedMoods.indexOf(m);
+    if(i>-1)state.selectedMoods.splice(i,1);
+    else if(state.selectedMoods.length<3)state.selectedMoods.push(m);
+    render();
+  });
+  document.getElementById('moodCount').textContent=state.selectedMoods.length?`(${state.selectedMoods.length}/3)`:'';
+}
+
+function renderStep1(){
+  document.getElementById('energyAuto').innerHTML=!state.energy?'<span class="auto-badge">auto-filled</span>':'';
+  document.getElementById('bpmAuto').innerHTML=!state.bpm?'<span class="auto-badge">auto-filled</span>':'';
+  const autoE=getAutoEnergy();
+  const el=document.getElementById('energyList');
+  el.innerHTML='';
+  energyCurves.forEach(e=>{
+    const isSel=state.energy===e.name;
+    const isSug=!state.energy&&e.name===autoE;
+    const d=document.createElement('div');
+    d.className='energy-card'+(isSel?' selected':'')+(isSug&&!isSel?' suggested':'');
+    d.onclick=()=>{state.energy=state.energy===e.name?null:e.name;render();};
+    d.innerHTML=`<span class="energy-emoji">${e.emoji}</span><div><div class="energy-name">${e.name}${isSug&&!isSel?' <span class="suggested-tag mono">suggested</span>':''}</div><div class="energy-desc mono">${e.desc}</div></div>`;
+    el.appendChild(d);
+  });
+  const bi=document.getElementById('bpmInput');
+  bi.placeholder='~'+getAutoBpm();
+  if(document.activeElement!==bi)bi.value=state.bpm;
+  bi.oninput=function(){state.bpm=this.value;render();};
+  const di=document.getElementById('durationInput');
+  if(document.activeElement!==di)di.value=state.duration;
+  di.oninput=function(){state.duration=this.value;};
+}
+
+function renderStep2(){
+  const autoS=getAutoStructure();
+  document.getElementById('structAuto').innerHTML=!state.structurePreset?'<span class="auto-badge">auto-filled</span>':'';
+  const sg=document.getElementById('structGrid');
+  sg.innerHTML='';
+  structurePresets.forEach(p=>{
+    const isSel=state.structurePreset===p.name;
+    const isSug=!state.structurePreset&&p.name===autoS;
+    const c=document.createElement('button');
+    c.className='chip'+(isSel||isSug?' selected':'');
+    c.textContent=p.name+(isSug&&!isSel?' ✦':'');
+    c.onclick=()=>{
+      state.structurePreset=p.name;
+      state.sections=p.name!=='Custom'?[...p.sections]:["Intro","Verse","Chorus","Outro"];
+      state.sectionInstruments={};state.sectionNotes={};
+      state.userTouchedInstruments={};state.userTouchedNotes={};
+      state.peakSection=null;render();
+    };
+    sg.appendChild(c);
+  });
+  // Auto-load sections if none
+  if(!state.sections.length&&!state.structurePreset){
+    const preset=structurePresets.find(p=>p.name===autoS);
+    if(preset)state.sections=[...preset.sections];
+  }
+  const ed=document.getElementById('sectionsEditor');
+  ed.style.display=state.sections.length?'block':'none';
+  const sl=document.getElementById('sectionsList');
+  sl.innerHTML='';
+  state.sections.forEach((sec,i)=>{
+    const d=document.createElement('div');
+    d.className='section-item';
+    d.innerHTML=`<span class="section-num mono">${String(i+1).padStart(2,'0')}</span>`;
+    const inp=document.createElement('input');
+    inp.className='section-name-input';
+    inp.value=sec;
+    inp.oninput=function(){state.sections[i]=this.value;};
+    d.appendChild(inp);
+    const rm=document.createElement('button');
+    rm.className='section-remove';
+    rm.textContent='×';
+    rm.onclick=()=>{state.sections.splice(i,1);render();};
+    d.appendChild(rm);
+    sl.appendChild(d);
+  });
+}
+
+function renderStep3(){
+  const al=document.getElementById('arrangeList');
+  al.innerHTML='';
+  const peak=effectivePeak();
+  state.sections.forEach((sec,i)=>{
+    const insts=effectiveInstruments(i);
+    const note=effectiveNote(i);
+    const isPeak=i===peak;
+    const isExpanded=!!state.expandedSections[i];
+    const isAuto=!state.userTouchedInstruments[i];
+
+    const row=document.createElement('div');
+    row.className='arrange-row'+(isPeak?' peak':'');
+
+    // Header
+    const header=document.createElement('div');
+    header.className='arrange-header';
+    header.onclick=()=>{state.expandedSections[i]=!state.expandedSections[i];render();};
+    header.innerHTML=`
+      <div class="arrange-header-left">
+        <span class="mono" style="color:#e84855;font-size:11px;background:rgba(232,72,85,0.1);padding:2px 8px;border-radius:4px">${String(i+1).padStart(2,'0')}</span>
+        <span style="font-size:14px">${sec}</span>
+        ${isPeak?'<span style="font-size:12px">⚡ PEAK</span>':''}
+        <span class="mono" style="color:#555;font-size:11px">${insts.length} inst.${isAuto?' <span class="auto-badge">auto-filled</span>':''}</span>
+      </div>
+      <span class="arrange-arrow${isExpanded?' open':''}">▶</span>`;
+    row.appendChild(header);
+
+    // Body
+    const body=document.createElement('div');
+    body.className='arrange-body'+(isExpanded?' open':'');
+
+    const peakBtn=document.createElement('button');
+    peakBtn.className='peak-btn'+(isPeak?' active':'');
+    peakBtn.textContent=isPeak?'⚡ Peak Section':'Set as Peak';
+    peakBtn.onclick=(e)=>{e.stopPropagation();state.peakSection=i;render();};
+    body.appendChild(peakBtn);
+
+    const instLabel=document.createElement('p');
+    instLabel.className='mono';
+    instLabel.style.cssText='color:#666;font-size:11px;margin:8px 0;text-transform:uppercase;letter-spacing:1px';
+    instLabel.textContent='Instruments:';
+    body.appendChild(instLabel);
+
+    const chipGrid=document.createElement('div');
+    chipGrid.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px';
+    allInstruments.forEach(inst=>{
+      const c=document.createElement('button');
+      c.className='chip small'+(insts.includes(inst)?' selected':'');
+      c.textContent=inst;
+      c.onclick=(e)=>{
+        e.stopPropagation();
+        state.userTouchedInstruments[i]=true;
+        if(!state.sectionInstruments[i])state.sectionInstruments[i]=[...getAutoInstruments(i,state.sections.length)];
+        const ci=state.sectionInstruments[i].indexOf(inst);
+        if(ci>-1)state.sectionInstruments[i].splice(ci,1);
+        else state.sectionInstruments[i].push(inst);
+        render();
+      };
+      chipGrid.appendChild(c);
+    });
+    body.appendChild(chipGrid);
+
+    const ta=document.createElement('textarea');
+    ta.className='textarea-input';
+    ta.placeholder='Direction notes...';
+    ta.value=note;
+    ta.oninput=function(){state.userTouchedNotes[i]=true;state.sectionNotes[i]=this.value;};
+    body.appendChild(ta);
+
+    row.appendChild(body);
+    al.appendChild(row);
+  });
+
+  const cn=document.getElementById('customNotes');
+  if(document.activeElement!==cn)cn.value=state.customNotes;
+  cn.oninput=function(){state.customNotes=this.value;};
+}
+
+function renderStep4(){
+  const ci=document.getElementById('creativeInput');
+  if(document.activeElement!==ci)ci.value=state.userCreativeInput;
+  ci.oninput=function(){state.userCreativeInput=this.value;updateOutput();};
+
+  updateOutput();
+}
+
+function updateOutput(){
+  const text=generatePrompt();
+  document.getElementById('outputText').textContent=text;
+  const wc=wordCount(text);
+  const el=document.getElementById('wordCounter');
+  el.textContent=`${wc} / 1000 words`;
+  el.className='word-counter mono '+(wc>1000?'over':wc>800?'warn':'ok');
+}
+
+// === HELPERS ===
+function renderChips(containerId,items,selected,onClick){
+  const c=document.getElementById(containerId);
+  c.innerHTML='';
+  items.forEach(item=>{
+    const b=document.createElement('button');
+    b.className='chip'+(selected.includes(item)?' selected':'');
+    b.textContent=item;
+    b.onclick=()=>onClick(item);
+    c.appendChild(b);
+  });
+}
+
+function canProceed(){
+  if(state.step===0)return state.selectedGenres.length>0&&state.selectedMoods.length>0;
+  return true;
+}
+
+function addSection(){state.sections.push('New Section');render();}
+
+function goNext(){
+  if(state.step===1&&!state.structurePreset){
+    const autoName=getAutoStructure();
+    const preset=structurePresets.find(p=>p.name===autoName);
+    if(preset)state.sections=[...preset.sections];
+  }
+  state.step++;
+  render();
+  window.scrollTo(0,0);
+}
+function goBack(){state.step--;render();window.scrollTo(0,0);}
+
+function generatePrompt(){
+  const peak=effectivePeak();
+  const peakName=state.sections[peak]||state.sections[Math.floor(state.sections.length*0.7)]||'';
+  const eInfo=energyCurves.find(e=>e.name===effectiveEnergy());
+  let p=`${state.selectedGenres.join(', ')} track. ${state.selectedMoods.join(', ')} mood. ~${effectiveBpm()} BPM. ${state.duration} long.\n\n`;
+  p+=`Energy: ${effectiveEnergy()} — ${eInfo?.desc||''}. Peak moment at "${peakName}".\n\n`;
+  state.sections.forEach((sec,i)=>{
+    const insts=effectiveInstruments(i);
+    const note=effectiveNote(i);
+    const isPk=i===peak;
+    p+=`${sec}${isPk?' [PEAK]':''}: `;
+    if(insts.length)p+=`${insts.join(', ')}. `;
+    if(note)p+=`${note}. `;
+    p+='\n';
+  });
+  p+=`\nStart ${effectiveEnergy()==='Explosive Start'?'big and powerful':'sparse and minimal'}, `;
+  p+=`build to peak at "${peakName}", ${effectiveEnergy()==='Slow Build'?'end at full power':'then resolve and wind down'}. `;
+  p+=`Keep clear separation between low-end bass, midrange instruments, and high-end air/sparkle.`;
+  if(state.customNotes)p+=` ${state.customNotes}`;
+  if(state.userCreativeInput)p+=`\n\n${state.userCreativeInput.trim()}`;
+  return p;
+}
+
+function wordCount(t){return t.trim().split(/\s+/).filter(Boolean).length;}
+
+function copyPrompt(){
+  const text=generatePrompt();
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.cssText='position:fixed;left:-9999px;top:-9999px';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showCopied();
+  }catch(e){
+    navigator.clipboard.writeText(text).then(showCopied);
+  }
+}
+function showCopied(){
+  const b=document.getElementById('copyBtn');
+  b.textContent='✓ Copied to Clipboard!';
+  b.classList.add('copied');
+  setTimeout(()=>{b.textContent='📋 Copy Prompt';b.classList.remove('copied');},2000);
+}
+
+function startOver(){
+  Object.assign(state,{
+    step:0,selectedGenres:[],selectedMoods:[],energy:null,bpm:'',duration:'3:00-4:00',
+    structurePreset:null,sections:[],sectionInstruments:{},sectionNotes:{},
+    userTouchedInstruments:{},userTouchedNotes:{},peakSection:null,
+    customNotes:'',userCreativeInput:'',expandedSections:{},
+  });
+  render();
+  window.scrollTo(0,0);
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
