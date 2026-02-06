@@ -4,7 +4,7 @@ A simple prompt builder for AI music generators like Suno, Udio, etc.
 
 ## What is this?
 
-Most people just type "make me a sad rock song" into Suno and get a boring 2-minute loop. This tool helps you build a proper structured prompt — with song sections, instruments, energy flow, and all that — so the output actually sounds like a real song.
+A simple prompt builder for AI music generators like Suno, Udio, etc.
 
 ## How it works
 
